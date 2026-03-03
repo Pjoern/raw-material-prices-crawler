@@ -1,0 +1,40 @@
+name: Rohstoffpreise täglich crawlen
+
+on:
+  schedule:
+    # Jeden Werktag um 07:30 UTC (= 08:30 MEZ / 09:30 MESZ)
+    - cron: "30 7 * * 1-5"
+  workflow_dispatch:  # Auch manuell startbar über GitHub UI
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Für git push
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Abhaengigkeiten installieren
+        run: pip install -r requirements.txt
+
+      - name: Datum setzen
+        run: echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Preise crawlen
+        run: python crawler.py
+
+      - name: Ergebnisse committen und pushen
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/prices_history.csv reports/ docs/
+          git diff --cached --quiet || git commit -m "chore: Rohstoffpreise $(date +'%Y-%m-%d')"
+          git push
