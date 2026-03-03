@@ -58,15 +58,17 @@ PRICE_RE = re.compile(
 
 # -------------------------------------------------------- Quell-Definitionen ---
 
-# Trading Economics: (slug, anzeigename, kategorie, notiz)
+# Trading Economics: (slug, anzeigename, kategorie, notiz, unit_fallback)
+# unit_fallback: Einheit fuer #p-Fallback wenn Meta-Description keinen Preis liefert
 TRADING_ECONOMICS = [
-    ("nickel",       "Nickel",       "Basismetalle",  "LME"),
-    ("iron-ore",     "Eisenerz",     "Rohstoffe",     "62% Fe, CFR China"),
-    ("coking-coal",  "Kokskohle",    "Energietraeger","Premium Hard"),
-    ("cobalt",       "Kobalt",       "Basismetalle",  ""),
-    ("manganese",    "Mangan",       "Legierungen",   "Erz, CNY/mtu"),
-    ("silicon",      "Silizium",     "Legierungen",   "CNY/T"),
-    ("steel",        "Stahl HRC",    "Stahlpreise",   "Hot-Rolled Coil, CNY/T"),
+    ("nickel",       "Nickel",       "Basismetalle",  "LME",                    ""),
+    ("iron-ore",     "Eisenerz",     "Rohstoffe",     "62% Fe, CFR China",      ""),
+    ("coking-coal",  "Kokskohle",    "Energietraeger","Premium Hard",            ""),
+    ("cobalt",       "Kobalt",       "Basismetalle",  "",                        ""),
+    ("manganese",    "Mangan",       "Legierungen",   "Erz, CNY/mtu",           ""),
+    ("silicon",      "Silizium",     "Legierungen",   "CNY/T",                  ""),
+    ("steel",        "Stahl HRC",    "Stahlpreise",   "Hot-Rolled Coil, CNY/T", ""),
+    ("tungsten",     "Wolfram",      "Legierungen",   "APT",                    "USD/mtu"),
 ]
 
 # Yahoo Finance: (symbol, anzeigename, kategorie, einheit, umrechnung_auf_usd_mt)
@@ -89,8 +91,12 @@ FX_PAIRS = {
 
 # -------------------------------------------------------------- Datenabruf ---
 
-def fetch_trading_economics(slug: str) -> tuple[float | None, str]:
-    """Liest Preis und Einheit von Trading Economics via Meta-Description."""
+def fetch_trading_economics(slug: str, unit_fallback: str = "") -> tuple[float | None, str]:
+    """Liest Preis und Einheit von Trading Economics via Meta-Description.
+
+    Falls die Meta-Description keinen Preis enthaelt (z.B. Wolfram), wird
+    als Fallback das #p-Element mit der angegebenen unit_fallback-Einheit verwendet.
+    """
     url = f"https://tradingeconomics.com/commodity/{slug}"
     try:
         r = requests.get(url, headers=HEADERS, timeout=12)
@@ -103,6 +109,12 @@ def fetch_trading_economics(slug: str) -> tuple[float | None, str]:
             price = float(m.group(1).replace(",", ""))
             unit = m.group(2)
             return price, unit
+        # Fallback: #p-Element mit vorgegebener Einheit (fuer Rohstoffe ohne Meta-Preis)
+        if unit_fallback:
+            p_el = soup.select_one("#p")
+            if p_el and p_el.text.strip():
+                price = float(p_el.text.strip().replace(",", ""))
+                return price, unit_fallback
     except Exception:
         pass
     return None, ""
@@ -148,8 +160,8 @@ def crawl() -> list[dict]:
 
     # Trading Economics
     print("Lade Trading Economics...")
-    for slug, name, kategorie, notiz in TRADING_ECONOMICS:
-        price, unit = fetch_trading_economics(slug)
+    for slug, name, kategorie, notiz, unit_fallback in TRADING_ECONOMICS:
+        price, unit = fetch_trading_economics(slug, unit_fallback)
         status = "OK" if price is not None else "FEHLER"
 
         # EUR-Aequivalent berechnen falls USD-Preis und Kurs vorhanden
