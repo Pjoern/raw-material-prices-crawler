@@ -551,12 +551,13 @@ def save_html(_results=None, _today=None, _fx=None):
         .then(function(text) {{
           var rows = parseCSV(text);
 
-          // Neuestes Datum bestimmen
-          var dateSet = {{}};
-          rows.forEach(function(r) {{ if (r.datum) dateSet[r.datum] = true; }});
-          var dates = Object.keys(dateSet).sort();
-          var latestDate = dates[dates.length - 1];
-          var latest = rows.filter(function(r) {{ return r.datum === latestDate; }});
+          // Neuesten Zeitstempel bestimmen (eindeutiger pro Crawler-Lauf)
+          var tsSet = {{}};
+          rows.forEach(function(r) {{ if (r.zeitstempel) tsSet[r.zeitstempel] = true; }});
+          var timestamps = Object.keys(tsSet).sort();
+          var latestTs = timestamps[timestamps.length - 1];
+          var latestDate = latestTs ? latestTs.split(' ')[0] : '';
+          var latest = rows.filter(function(r) {{ return r.zeitstempel === latestTs; }});
 
           // Wechselkurse
           var fx = {{}};
