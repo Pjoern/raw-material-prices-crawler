@@ -323,69 +323,26 @@ def save_markdown(results: list[dict], today: str, fx: dict[str, float]):
     return md_path
 
 
-def save_html(results: list[dict], today: str, fx: dict[str, float]):
-    """Erstellt die GitHub Pages Webseite (docs/index.html)."""
+def save_html(_results=None, _today=None, _fx=None):
+    """Erstellt docs/index.html als dynamische Seite, die Daten live von GitHub laedt.
+
+    Die Seite benoetigt keine eingebetteten Preisdaten — JavaScript laedt beim Oeffnen
+    die aktuelle prices_history.csv von raw.githubusercontent.com und rendert die Tabellen.
+    Funktioniert sowohl als GitHub Pages als auch lokal (Internetverbindung erforderlich).
+    """
     html_path = DOCS_DIR / "index.html"
-    ts = datetime.now().strftime("%d.%m.%Y %H:%M Uhr")
 
-    cat_order = ["Basismetalle", "Rohstoffe", "Energietraeger", "Legierungen", "Stahlpreise"]
-    by_cat: dict[str, list[dict]] = {}
-    for r in results:
-        if r["kategorie"] == "Waehrung":
-            continue
-        by_cat.setdefault(r["kategorie"], []).append(r)
-
-    def fmt_price(val):
-        if val is None:
-            return '<span class="na">—</span>'
-        return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    # Tabellen-Rows pro Kategorie
-    sections_html = ""
-    all_cats = cat_order + [c for c in by_cat if c not in cat_order]
-    for cat in all_cats:
-        rows = by_cat.get(cat)
-        if not rows:
-            continue
-        rows_html = ""
-        for r in rows:
-            warn = ' <span class="warn">⚠</span>' if r["status"] != "OK" else ""
-            rows_html += f"""
-        <tr>
-          <td>{r['rohstoff']}{warn}</td>
-          <td class="num">{fmt_price(r['preis'])}</td>
-          <td class="unit">{r['einheit'] or '—'}</td>
-          <td class="num">{fmt_price(r['preis_eur'])}</td>
-          <td class="src">{r['quelle']}</td>
-          <td class="note">{r['notiz']}</td>
-        </tr>"""
-        sections_html += f"""
-      <h2>{cat}</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Rohstoff</th>
-            <th>Preis</th>
-            <th>Einheit</th>
-            <th>EUR-Äquiv.</th>
-            <th>Quelle</th>
-            <th>Notiz</th>
-          </tr>
-        </thead>
-        <tbody>{rows_html}
-        </tbody>
-      </table>"""
-
-    eur_usd = fx.get("EUR/USD", "—")
-    cny_usd = fx.get("CNY/USD", "—")
-    jpyusd  = fx.get("JPY/USD", "—")
+    GITHUB_RAW_CSV = (
+        "https://raw.githubusercontent.com/Pjoern/raw-material-prices-crawler"
+        "/main/data/prices_history.csv"
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rohstoffpreise Stahl — {today}</title>
+  <title>Rohstoffpreise Stahl</title>
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
@@ -396,19 +353,9 @@ def save_html(results: list[dict], today: str, fx: dict[str, float]):
       max-width: 1100px;
       margin: 0 auto;
     }}
-    header {{
-      margin-bottom: 28px;
-    }}
-    h1 {{
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #1a2a3a;
-    }}
-    .meta {{
-      margin-top: 6px;
-      font-size: 0.85rem;
-      color: #666;
-    }}
+    header {{ margin-bottom: 24px; }}
+    h1 {{ font-size: 1.6rem; font-weight: 700; color: #1a2a3a; }}
+    .meta {{ margin-top: 6px; font-size: 0.85rem; color: #666; }}
     .fx-bar {{
       display: flex;
       gap: 20px;
@@ -452,10 +399,35 @@ def save_html(results: list[dict], today: str, fx: dict[str, float]):
     td {{ padding: 9px 14px; border-bottom: 1px solid #eee; }}
     .num {{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }}
     .unit {{ color: #666; font-size: 0.82rem; }}
-    .src {{ color: #888; font-size: 0.82rem; }}
+    .src  {{ color: #888; font-size: 0.82rem; }}
     .note {{ color: #999; font-size: 0.78rem; }}
-    .na {{ color: #bbb; }}
+    .na   {{ color: #bbb; }}
     .warn {{ color: #e07b00; }}
+    #loading {{
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }}
+    .spinner {{
+      display: inline-block;
+      width: 32px; height: 32px;
+      border: 3px solid #e0e4ea;
+      border-top-color: #1a2a3a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }}
+    @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+    #error {{
+      display: none;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 16px 20px;
+      border-radius: 8px;
+      color: #856404;
+      margin-top: 16px;
+      line-height: 1.6;
+    }}
     footer {{
       margin-top: 40px;
       font-size: 0.78rem;
@@ -466,22 +438,157 @@ def save_html(results: list[dict], today: str, fx: dict[str, float]):
 </head>
 <body>
   <header>
-    <h1>📊 Rohstoffpreise Stahl</h1>
-    <p class="meta">Stand: {ts} &nbsp;·&nbsp; Datum: {today}</p>
+    <h1>Rohstoffpreise Stahl</h1>
+    <p class="meta" id="meta-ts">Lade Daten von GitHub...</p>
   </header>
 
-  <div class="fx-bar">
-    <div><span>EUR/USD</span><strong>{eur_usd}</strong></div>
-    <div><span>CNY/USD</span><strong>{cny_usd}</strong></div>
-    <div><span>JPY/USD</span><strong>{jpyusd}</strong></div>
-  </div>
+  <div class="fx-bar" id="fx-bar" style="display:none"></div>
 
-  {sections_html}
+  <div id="loading">
+    <div class="spinner"></div><br>
+    Preise werden von GitHub geladen...
+  </div>
+  <div id="error"></div>
+  <div id="content"></div>
 
   <footer>
-    Quellen: Trading Economics, Yahoo Finance &nbsp;·&nbsp;
-    Alle Angaben ohne Gewähr. Preise können verzögert sein.
+    Quellen: Trading Economics, Yahoo Finance &nbsp;&middot;&nbsp;
+    Alle Angaben ohne Gew&auml;hr. Preise k&ouml;nnen verz&ouml;gert sein.
   </footer>
+
+  <script>
+    var CSV_URL = '{GITHUB_RAW_CSV}';
+    var CAT_ORDER = ['Basismetalle','Rohstoffe','Energietraeger','Legierungen','Stahlpreise'];
+    var CAT_LABELS = {{
+      'Basismetalle':  'Basismetalle',
+      'Rohstoffe':     'Rohstoffe',
+      'Energietraeger':'Energietr&auml;ger',
+      'Legierungen':   'Legierungen',
+      'Stahlpreise':   'Stahlpreise'
+    }};
+
+    function parseCSV(text) {{
+      var lines = text.trim().split('\\n');
+      var headers = lines[0].split(';').map(function(h) {{
+        return h.trim().replace(/^\\uFEFF/, '');
+      }});
+      return lines.slice(1).filter(function(l) {{ return l.trim(); }}).map(function(line) {{
+        var vals = line.split(';');
+        var obj = {{}};
+        headers.forEach(function(h, i) {{ obj[h] = (vals[i] || '').trim(); }});
+        return obj;
+      }});
+    }}
+
+    function fmtNum(val) {{
+      if (!val || val === '') return '<span class="na">&mdash;</span>';
+      var num = parseFloat(val.replace(',', '.'));
+      if (isNaN(num)) return '<span class="na">&mdash;</span>';
+      return num.toLocaleString('de-DE', {{minimumFractionDigits: 2, maximumFractionDigits: 2}});
+    }}
+
+    function fmtDate(isoDate) {{
+      if (!isoDate) return '&mdash;';
+      var parts = isoDate.split('-');
+      return parts.length === 3 ? parts[2] + '.' + parts[1] + '.' + parts[0] : isoDate;
+    }}
+
+    function renderFX(fx, latestDate, zeitstempel) {{
+      var bar = document.getElementById('fx-bar');
+      var html = '';
+      Object.keys(fx).forEach(function(k) {{
+        html += '<div><span>' + k + '</span><strong>' + fmtNum(fx[k]) + '</strong></div>';
+      }});
+      bar.innerHTML = html;
+      bar.style.display = 'flex';
+
+      var tsDisplay = zeitstempel ? zeitstempel.replace('T', ' ') : fmtDate(latestDate);
+      document.getElementById('meta-ts').innerHTML =
+        'Stand: ' + tsDisplay + ' &nbsp;&middot;&nbsp; Datum: ' + fmtDate(latestDate);
+    }}
+
+    function renderTables(byCat) {{
+      var content = document.getElementById('content');
+      var allCats = CAT_ORDER.slice();
+      Object.keys(byCat).forEach(function(c) {{
+        if (CAT_ORDER.indexOf(c) === -1) allCats.push(c);
+      }});
+
+      var html = '';
+      allCats.forEach(function(cat) {{
+        var rows = byCat[cat];
+        if (!rows || rows.length === 0) return;
+        var label = CAT_LABELS[cat] || cat;
+
+        var rowsHtml = rows.map(function(r) {{
+          var warn = r.status !== 'OK' ? ' <span class="warn">&#9888;</span>' : '';
+          return '<tr>'
+            + '<td>' + r.rohstoff + warn + '</td>'
+            + '<td class="num">' + fmtNum(r.preis) + '</td>'
+            + '<td class="unit">' + (r.einheit || '&mdash;') + '</td>'
+            + '<td class="num">' + fmtNum(r.preis_eur) + '</td>'
+            + '<td class="src">' + r.quelle + '</td>'
+            + '<td class="note">' + r.notiz + '</td>'
+            + '</tr>';
+        }}).join('');
+
+        html += '<h2>' + label + '</h2>'
+          + '<table><thead><tr>'
+          + '<th>Rohstoff</th><th>Preis</th><th>Einheit</th>'
+          + '<th>EUR-&Auml;quiv.</th><th>Quelle</th><th>Notiz</th>'
+          + '</tr></thead><tbody>' + rowsHtml + '</tbody></table>';
+      }});
+
+      content.innerHTML = html;
+    }}
+
+    function loadData() {{
+      fetch(CSV_URL + '?t=' + Date.now())
+        .then(function(resp) {{
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.text();
+        }})
+        .then(function(text) {{
+          var rows = parseCSV(text);
+
+          // Neuestes Datum bestimmen
+          var dateSet = {{}};
+          rows.forEach(function(r) {{ if (r.datum) dateSet[r.datum] = true; }});
+          var dates = Object.keys(dateSet).sort();
+          var latestDate = dates[dates.length - 1];
+          var latest = rows.filter(function(r) {{ return r.datum === latestDate; }});
+
+          // Wechselkurse
+          var fx = {{}};
+          latest.filter(function(r) {{ return r.kategorie === 'Waehrung'; }})
+            .forEach(function(r) {{ fx[r.einheit] = r.preis; }});
+
+          // Preiszeilen nach Kategorie gruppieren
+          var byCat = {{}};
+          latest.filter(function(r) {{ return r.kategorie !== 'Waehrung'; }})
+            .forEach(function(r) {{
+              if (!byCat[r.kategorie]) byCat[r.kategorie] = [];
+              byCat[r.kategorie].push(r);
+            }});
+
+          renderFX(fx, latestDate, latest.length > 0 ? latest[0].zeitstempel : '');
+          renderTables(byCat);
+          document.getElementById('loading').style.display = 'none';
+        }})
+        .catch(function(e) {{
+          document.getElementById('loading').style.display = 'none';
+          var errDiv = document.getElementById('error');
+          errDiv.innerHTML = '<strong>Daten konnten nicht geladen werden.</strong><br>'
+            + e.message + '<br><br>'
+            + '<small>Die Preise werden von GitHub abgerufen. '
+            + 'Bitte stelle sicher, dass eine Internetverbindung besteht.</small>';
+          errDiv.style.display = 'block';
+          document.getElementById('meta-ts').textContent = 'Keine Verbindung zu GitHub';
+        }});
+    }}
+
+    loadData();
+  </script>
 </body>
 </html>
 """
