@@ -2096,3 +2096,18 @@
 2026-09-10;2026-09-10 12:18:34;Kurs EUR/USD;Waehrung;1.16171;EUR/USD;;Yahoo Finance;EURUSD=X;;OK
 2026-09-10;2026-09-10 12:18:34;Kurs CNY/USD;Waehrung;0.149303;CNY/USD;;Yahoo Finance;CNYUSD=X;;OK
 2026-09-10;2026-09-10 12:18:34;Kurs JPY/USD;Waehrung;0.006481;JPY/USD;;Yahoo Finance;JPYUSD=X;;OK
+2026-09-11;2026-09-11 12:17:29;Nickel;Basismetalle;16385.25;USD/T;14130.64;Trading Economics;nickel;LME;OK
+2026-09-11;2026-09-11 12:17:29;Eisenerz;Rohstoffe;98.68;USD/T;85.1;Trading Economics;iron-ore;62% Fe, CFR China;OK
+2026-09-11;2026-09-11 12:17:29;Kokskohle;Energietraeger;274.0;USD/T;236.3;Trading Economics;coking-coal;Premium Hard;OK
+2026-09-11;2026-09-11 12:17:29;Kobalt;Basismetalle;42940.0;USD/T;37031.45;Trading Economics;cobalt;;OK
+2026-09-11;2026-09-11 12:17:29;Mangan;Legierungen;29.05;CNY/mtu;;Trading Economics;manganese;Erz, CNY/mtu;OK
+2026-09-11;2026-09-11 12:17:29;Silizium;Legierungen;8565.0;CNY/T;;Trading Economics;silicon;CNY/T;OK
+2026-09-11;2026-09-11 12:17:29;Stahl HRC;Stahlpreise;3067.0;CNY/T;;Trading Economics;steel;Hot-Rolled Coil, CNY/T;OK
+2026-09-11;2026-09-11 12:17:29;Wolfram;Legierungen;99.45;USD/mtu;85.77;Trading Economics;tungsten;APT;OK
+2026-09-11;2026-09-11 12:17:29;Kupfer;Basismetalle;14379.63;USD/MT;12400.99;Yahoo Finance;HG=F;Originalwert: 6.5225 USD/lb;OK
+2026-09-11;2026-09-11 12:17:29;Aluminium;Basismetalle;3400.0;USD/MT;2932.16;Yahoo Finance;ALI=F;Originalwert: 3400.0000 USD/MT;OK
+2026-09-11;2026-09-11 12:17:29;Zink;Basismetalle;4193.5;USD/MT;3616.47;Yahoo Finance;ZNC=F;Originalwert: 4193.5000 USD/MT;OK
+2026-09-11;2026-09-11 12:17:29;Blei;Basismetalle;4802.21;USD/MT;4141.42;Yahoo Finance;LE=F;Originalwert: 217.8250 USX/lb;OK
+2026-09-11;2026-09-11 12:17:29;Kurs EUR/USD;Waehrung;1.159555;EUR/USD;;Yahoo Finance;EURUSD=X;;OK
+2026-09-11;2026-09-11 12:17:29;Kurs CNY/USD;Waehrung;0.149312;CNY/USD;;Yahoo Finance;CNYUSD=X;;OK
+2026-09-11;2026-09-11 12:17:29;Kurs JPY/USD;Waehrung;0.006494;JPY/USD;;Yahoo Finance;JPYUSD=X;;OK
